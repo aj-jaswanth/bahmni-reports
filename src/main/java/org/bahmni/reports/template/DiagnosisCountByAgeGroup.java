@@ -23,11 +23,9 @@ import java.util.List;
 import static net.sf.dynamicreports.report.builder.DynamicReports.*;
 import static org.bahmni.reports.util.FileReaderUtil.getFileContent;
 
-@Component(value = "DiagnosisForDischargedPatient")
+@Component
 @UsingDatasource("openmrs")
-public class DiagnosisForDischargedPatientTemplate implements BaseReportTemplate<DiagnosisReportConfig> {
-
-    @Override
+public class DiagnosisCountByAgeGroup{
     public JasperReportBuilder build(Connection connection, Report<DiagnosisReportConfig> reportConfig, String startDate, String endDate, List<AutoCloseable> resources) throws SQLException, DRException {
         StyleBuilder textStyle = stl.style(Templates.columnStyle).setBorder(stl.pen1Point());
         StyleBuilder cellStyle = Templates.columnStyle.setBorder(Styles.pen());
@@ -51,7 +49,7 @@ public class DiagnosisForDischargedPatientTemplate implements BaseReportTemplate
                 )
                 .setCellStyle(cellStyle);
 
-        String sql = getFileContent("sql/diagnosisCount.sql");
+        String sql = getFileContent("sql/diagnosisCountByAgeGroup.sql");
 
         JasperReportBuilder report = report();
         report.setPageFormat(PageType.A3, PageOrientation.LANDSCAPE)

@@ -11,6 +11,7 @@ import net.sf.dynamicreports.report.builder.style.Styles;
 import net.sf.dynamicreports.report.constant.Calculation;
 import net.sf.dynamicreports.report.constant.PageOrientation;
 import net.sf.dynamicreports.report.constant.PageType;
+import org.bahmni.reports.model.DiagnosisReportConfig;
 import org.bahmni.reports.model.Report;
 import org.bahmni.reports.model.Config;
 import org.springframework.stereotype.Component;
@@ -23,11 +24,9 @@ import java.util.List;
 import static net.sf.dynamicreports.report.builder.DynamicReports.*;
 import static org.bahmni.reports.util.FileReaderUtil.getFileContent;
 
-@Component(value = "DiagnosisForOPDPatient")
-public class DiagnosisForOPDPatientTemplate implements BaseReportTemplate<Config> {
-
-    @Override
-    public JasperReportBuilder build(Connection connection, Report<Config> reportConfig, String startDate, String endDate, List<AutoCloseable> resources) throws SQLException {
+@Component(value = "DiagnosisCountWithoutAgeGroup")
+public class DiagnosisCountWithoutAgeGroup{
+    public JasperReportBuilder build(Connection connection, Report<DiagnosisReportConfig> reportConfig, String startDate, String endDate, List<AutoCloseable> resources) throws SQLException {
         StyleBuilder textStyle = stl.style(Templates.columnStyle).setBorder(stl.pen1Point());
         StyleBuilder cellStyle = Templates.columnStyle.setBorder(Styles.pen());
 
@@ -56,7 +55,7 @@ public class DiagnosisForOPDPatientTemplate implements BaseReportTemplate<Config
                 )
                 .setCellStyle(cellStyle);
 
-        String sql = getFileContent("sql/diagnosisCountOPD.sql");
+        String sql = getFileContent("sql/diagnosisCountWithoutAgeGroup.sql");
         
 
 
@@ -69,7 +68,7 @@ public class DiagnosisForOPDPatientTemplate implements BaseReportTemplate<Config
                 .pageFooter(Templates.footerComponent)
                 .columns(icd10Code, disease, groupName, female, male)
                 .groupBy(groupName)
-                .setDataSource(String.format(sql, startDate, endDate),
+                .setDataSource(String.format(sql, startDate, endDate, reportConfig.getConfig().getVisitTypes()),
                         connection);
         return report;
     }
