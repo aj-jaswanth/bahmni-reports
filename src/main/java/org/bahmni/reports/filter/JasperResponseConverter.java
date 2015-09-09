@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
+import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 
@@ -43,6 +44,8 @@ public class JasperResponseConverter {
                 exporterBuilder.setMacroTemplate(macroTemplateLocation);
                 exporterBuilder.addSheetName("Report");
                 report.toXlsx(exporterBuilder);
+                File templateFile = new File(macroTemplateLocation);
+                templateFile.delete();
                 // below code is to generate in xls format
 //                response.setHeader("Content-Disposition", "attachment; filename=" + fileName + ".xls");
 //                report.setTemplate(Templates.excelReportTemplate);
