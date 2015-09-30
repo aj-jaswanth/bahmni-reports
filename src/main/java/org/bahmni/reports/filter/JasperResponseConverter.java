@@ -36,24 +36,24 @@ public class JasperResponseConverter {
                 break;
             case "application/vnd.ms-excel-custom":
                 // below code is to generate in xlsm format (xlsx is used from Excel 2007 but it does not support macros. Macro enabled excel will be stored with extension '.xlsm'
-                response.setContentType("application/vnd.ms-excel");
-                response.setHeader("Content-Disposition", "attachment; filename=" + fileName + ".xlsm");
+//                response.setContentType("application/vnd.ms-excel");
+//                response.setHeader("Content-Disposition", "attachment; filename=" + fileName + ".xlsm");
+//                report.setTemplate(Templates.excelReportTemplate);
+//                JasperXlsxExporterBuilder exporterBuilder = Exporters.xlsxExporter(outputStream).setDetectCellType(true);
+//                exporterBuilder.setKeepWorkbookTemplateSheets(true);
+//                exporterBuilder.setMacroTemplate(macroTemplateLocation);
+//                exporterBuilder.addSheetName("Report");
+//                report.toXlsx(exporterBuilder);
+                // below code is to generate in xls format
+                response.setHeader("Content-Disposition", "attachment; filename=" + fileName + ".xls");
                 report.setTemplate(Templates.excelReportTemplate);
-                JasperXlsxExporterBuilder exporterBuilder = Exporters.xlsxExporter(outputStream).setDetectCellType(true);
+                JasperXlsExporterBuilder exporterBuilder = Exporters.xlsExporter(outputStream).setDetectCellType(true);
                 exporterBuilder.setKeepWorkbookTemplateSheets(true);
-                exporterBuilder.setMacroTemplate(macroTemplateLocation);
+                exporterBuilder.setWorkbookTemplate(macroTemplateLocation);
                 exporterBuilder.addSheetName("Report");
-                report.toXlsx(exporterBuilder);
+                report.toXls(exporterBuilder);
                 File templateFile = new File(macroTemplateLocation);
                 templateFile.delete();
-                // below code is to generate in xls format
-//                response.setHeader("Content-Disposition", "attachment; filename=" + fileName + ".xls");
-//                report.setTemplate(Templates.excelReportTemplate);
-//                JasperXlsExporterBuilder exporterBuilder = Exporters.xlsExporter(outputStream).setDetectCellType(true);
-//                exporterBuilder.setKeepWorkbookTemplateSheets(false);
-//                exporterBuilder.setWorkbookTemplate(macroTemplateLocation);
-//                exporterBuilder.addSheetName("Report");
-//                report.toXls(exporterBuilder);
                 break;
 
             case "application/pdf":
