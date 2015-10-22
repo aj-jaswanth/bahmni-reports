@@ -37,6 +37,8 @@ import org.bahmni.reports.template.BaseReportTemplate;
         @JsonSubTypes.Type(value = PatientProgramReport.class, name = "PatientProgramReport")
         , @JsonSubTypes.Type(value = ProgramStateTransitionReport.class, name = "programStateTransitionReport")
         , @JsonSubTypes.Type(value = VisitReport.class, name = "visitReport")
+        , @JsonSubTypes.Type(value = MixedReport.class, name = "mixedReport")
+
 })
 
 public abstract class Report<T extends Config> {

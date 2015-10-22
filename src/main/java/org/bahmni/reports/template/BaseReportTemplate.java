@@ -7,8 +7,12 @@ import org.bahmni.reports.model.Report;
 
 import java.sql.Connection;
 import java.util.List;
+import java.util.Map;
 
 public abstract class BaseReportTemplate<T extends Config> {
     public abstract JasperReportBuilder build(Connection connection, JasperReportBuilder jasperReport, Report<T> report,
                                               String startDate, String endDate, List<AutoCloseable> resources, PageType pageType);
+    public JasperReportBuilder addJasperSubreports(JasperReportBuilder masterJasperReport, Report report, Map<String, Object> param){
+        return null;
+    };
 }
