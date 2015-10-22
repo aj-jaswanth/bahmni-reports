@@ -1,22 +1,17 @@
 package org.bahmni.reports.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import net.sf.dynamicreports.jasper.builder.JasperReportBuilder;
-import net.sf.dynamicreports.report.base.expression.AbstractSimpleExpression;
 import net.sf.dynamicreports.report.builder.component.MultiPageListBuilder;
-import net.sf.dynamicreports.report.builder.component.SubreportBuilder;
 import net.sf.dynamicreports.report.constant.PageType;
 import net.sf.dynamicreports.report.constant.SplitType;
-import net.sf.dynamicreports.report.definition.ReportParameters;
 import net.sf.dynamicreports.report.exception.DRException;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.JREmptyDataSource;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.log4j.Logger;
 import org.bahmni.reports.BahmniReportsProperties;
 import org.bahmni.reports.filter.JasperResponseConverter;
-import org.bahmni.reports.model.AllDatasources;
-import org.bahmni.reports.model.MixedReportConfig;
-import org.bahmni.reports.model.Report;
-import org.bahmni.reports.model.Reports;
+import org.bahmni.reports.model.*;
 import org.bahmni.reports.template.BaseReportTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -25,10 +20,14 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 import static net.sf.dynamicreports.report.builder.DynamicReports.cmp;
 import static net.sf.dynamicreports.report.builder.DynamicReports.report;
@@ -146,9 +145,23 @@ public class MainReportController {
         MultiPageListBuilder builder = cmp.multiPageList();
         builder.setSplitType(SplitType.PREVENT);
 
-        Collection<String> subreportNames = ((MixedReportConfig)report.getConfig()).getSubreportNames();
-        for(String subreportName : subreportNames){
-            builder.add(cmp.subreport(buildSubreport(subreportName, reportParameters)));
+        MixedReportConfig mixedReportConfig = ((MixedReportConfig)report.getConfig());
+        Collection<String> subreportNames = mixedReportConfig.getSubreportNames();
+        if (CollectionUtils.isNotEmpty(subreportNames)){
+            for(String subreportName : subreportNames){
+                builder.add(cmp.subreport(buildSubreport(subreportName, reportParameters, null)));
+            }
+        }
+
+        try{
+            ObjectMapper objectMapper = new ObjectMapper();
+            Reports reports = objectMapper.readValue(new File(mixedReportConfig.getSubreportConfigFilePath()), Reports.class);
+            //TODO: better name for subreportConfig
+            for (Report subreportConfig : reports.values()) {
+                builder.add(cmp.subreport(buildSubreport(subreportConfig.getName(), reportParameters, subreportConfig)));
+            }
+        } catch (IOException e){
+            logger.error("Error adding subreport", e);
         }
 
         masterJasperReport.title(builder);
@@ -156,12 +169,19 @@ public class MainReportController {
         return masterJasperReport;
     }
 
-    private JasperReportBuilder buildSubreport(String subreportName, Map<String, Object> reportParameters) {
+    private JasperReportBuilder buildSubreport(String subreportName, Map<String, Object> reportParameters, Report configReport) {
         Connection connection = null;
         JasperReportBuilder subreportBuilder = null;
 
         try{
             Report subreport = findReport(subreportName);
+
+            if (subreport.getConfig() != null) {
+                ObjectMapper objectMapper = new ObjectMapper();
+                ObjectReader updater = objectMapper.readerForUpdating(subreport.getConfig());
+                Config merged = updater.readValue(objectMapper.writeValueAsString(configReport.getConfig()));
+            }
+
             BaseReportTemplate subreportTemplate = subreport.getTemplate(bahmniReportsProperties);
             connection = allDatasources.getConnectionFromDatasource(subreportTemplate);
             JasperReportBuilder jasperReport = report();
