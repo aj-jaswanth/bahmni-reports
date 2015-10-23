@@ -3,9 +3,9 @@ package org.bahmni.reports.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import net.sf.dynamicreports.jasper.builder.JasperReportBuilder;
-import net.sf.dynamicreports.report.builder.component.MultiPageListBuilder;
+import net.sf.dynamicreports.report.builder.component.HorizontalListBuilder;
+import net.sf.dynamicreports.report.builder.component.SubreportBuilder;
 import net.sf.dynamicreports.report.constant.PageType;
-import net.sf.dynamicreports.report.constant.SplitType;
 import net.sf.dynamicreports.report.exception.DRException;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -136,43 +136,52 @@ public class MainReportController {
     }
 
     private JasperReportBuilder addJasperSubreports(JasperReportBuilder masterJasperReport, Report masterReport, Map<String, Object> reportParameters) {
-        MultiPageListBuilder builder = cmp.multiPageList();
-        builder.setSplitType(SplitType.PREVENT);
+        HorizontalListBuilder builder = cmp.horizontalList();
+        ArrayList<SubreportBuilder> subreports = new ArrayList<>();
 
         MixedReportConfig mixedReportConfig = ((MixedReportConfig)masterReport.getConfig());
 
-        addSubreports(reportParameters, builder, mixedReportConfig);
-        addCustomSubreports(reportParameters, builder, mixedReportConfig);
+        subreports.addAll(addSubreports(reportParameters, mixedReportConfig));
+        subreports.addAll(addCustomSubreports(reportParameters, mixedReportConfig));
 
+        for(SubreportBuilder subreport : subreports){
+            builder.add(subreport);
+        }
         masterJasperReport.title(builder);
 
         return masterJasperReport;
     }
 
-    private void addCustomSubreports(Map<String, Object> reportParameters, MultiPageListBuilder builder, MixedReportConfig mixedReportConfig) {
+    private ArrayList<SubreportBuilder> addCustomSubreports(Map<String, Object> reportParameters, MixedReportConfig mixedReportConfig) {
         String subreportConfigFilePath = mixedReportConfig.getSubreportConfigFilePath();
+        ArrayList<SubreportBuilder> subreports = new ArrayList<>();
 
-        if(StringUtils.isNotBlank(subreportConfigFilePath)){
+        if (StringUtils.isNotBlank(subreportConfigFilePath)){
             try{
                 ObjectMapper objectMapper = new ObjectMapper();
                 Reports reports = objectMapper.readValue(new File(subreportConfigFilePath), Reports.class);
                 for (Report subreportConfig : reports.values()) {
-                    builder.add(cmp.subreport(buildSubreport(subreportConfig.getName(), reportParameters, subreportConfig.getConfig())));
+                    subreports.add(cmp.subreport(buildSubreport(subreportConfig.getName(), reportParameters, subreportConfig.getConfig())));
                 }
             } catch (IOException e){
                 logger.error("Error adding subreport", e);
             }
         }
+        return subreports;
     }
 
-    private void addSubreports(Map<String, Object> reportParameters, MultiPageListBuilder builder, MixedReportConfig mixedReportConfig) {
+    private ArrayList<SubreportBuilder> addSubreports(Map<String, Object> reportParameters, MixedReportConfig mixedReportConfig) {
         Collection<String> subreportNames = mixedReportConfig.getSubreportNames();
+        ArrayList<SubreportBuilder> subreports = new ArrayList<>();
 
         if (CollectionUtils.isNotEmpty(subreportNames)){
+            SubreportBuilder subreport = null;
             for(String subreportName : subreportNames){
-                builder.add(cmp.subreport(buildSubreport(subreportName, reportParameters, null)));
+                subreport = cmp.subreport(buildSubreport(subreportName, reportParameters, null));
+                subreports.add(subreport);
             }
         }
+        return subreports;
     }
 
     private JasperReportBuilder buildSubreport(String subreportName, Map<String, Object> reportParameters, Config reportConfigTobeMerged) {
