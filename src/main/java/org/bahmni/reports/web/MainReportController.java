@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectReader;
 import net.sf.dynamicreports.jasper.builder.JasperReportBuilder;
 import net.sf.dynamicreports.report.builder.component.HorizontalListBuilder;
 import net.sf.dynamicreports.report.builder.component.SubreportBuilder;
+import net.sf.dynamicreports.report.builder.component.VerticalListBuilder;
 import net.sf.dynamicreports.report.constant.PageType;
 import net.sf.dynamicreports.report.exception.DRException;
 import org.apache.commons.collections.CollectionUtils;
@@ -77,7 +78,7 @@ public class MainReportController {
                     pageType);
 
             if(isMixedReport(report)) {
-                Map<String, Object> param = new HashMap<String, Object>();
+                Map<String, Object> param = new HashMap<>();
                 param.put("startDate", startDate);
                 param.put("endDate", endDate);
                 param.put("resources", resources);
@@ -130,14 +131,13 @@ public class MainReportController {
 
     private boolean isMixedReport(Report report){
         boolean mixedReport = false;
-        if(report.getType().equals("mixedReport")){
+        if(report.getType().equals(MixedReportConfig.MIXEDREPORT)){
             mixedReport = true;
         }
         return mixedReport;
     }
 
     private JasperReportBuilder addJasperSubreports(JasperReportBuilder masterJasperReport, Report masterReport, Map<String, Object> reportParameters) {
-        HorizontalListBuilder builder = cmp.horizontalList();
         ArrayList<SubreportBuilder> subreports = new ArrayList<>();
 
         MixedReportConfig mixedReportConfig = ((MixedReportConfig)masterReport.getConfig());
@@ -145,12 +145,31 @@ public class MainReportController {
         subreports.addAll(addSubreports(reportParameters, mixedReportConfig));
         subreports.addAll(addCustomSubreports(reportParameters, mixedReportConfig));
 
+        String reportPosition = mixedReportConfig.getReportPosition();
+
+        if(reportPosition.equals(MixedReportConfig.HORIZONTAL)){
+            addReportsToHorizontal(masterJasperReport, subreports);
+        } else if (reportPosition.equals(MixedReportConfig.VERTICAL)) {
+            addReportsToVertical(masterJasperReport, subreports);
+        }
+
+        return masterJasperReport;
+    }
+
+    private void addReportsToVertical(JasperReportBuilder masterJasperReport, ArrayList<SubreportBuilder> subreports) {
+        VerticalListBuilder builder = cmp.verticalList();
         for(SubreportBuilder subreport : subreports){
             builder.add(subreport);
         }
         masterJasperReport.title(builder);
+    }
 
-        return masterJasperReport;
+    private void addReportsToHorizontal(JasperReportBuilder masterJasperReport, ArrayList<SubreportBuilder> subreports) {
+        HorizontalListBuilder builder = cmp.horizontalList();
+        for(SubreportBuilder subreport : subreports){
+            builder.add(subreport);
+        }
+        masterJasperReport.title(builder);
     }
 
     private ArrayList<SubreportBuilder> addCustomSubreports(Map<String, Object> reportParameters, MixedReportConfig mixedReportConfig) {
@@ -165,7 +184,7 @@ public class MainReportController {
                     subreports.add(cmp.subreport(buildSubreport(subreportConfig.getName(), reportParameters, subreportConfig.getConfig())));
                 }
             } catch (IOException e){
-                logger.error("Error adding subreport", e);
+                logger.error("Error while adding custom subreport", e);
             }
         }
         return subreports;
@@ -208,7 +227,7 @@ public class MainReportController {
             resources.add(connection);
 
         } catch (IOException e){
-            logger.error("Error running subreport", e);
+            logger.error("Error while building subreport", e);
         }
 
         return subreportBuilder;
@@ -219,7 +238,7 @@ public class MainReportController {
             ObjectMapper objectMapper = new ObjectMapper();
             objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
             ObjectReader updater = objectMapper.readerForUpdating(subreport.getConfig());
-            Config merged = updater.readValue(objectMapper.writeValueAsString(reportConfigTobeMerged));
+            updater.readValue(objectMapper.writeValueAsString(reportConfigTobeMerged));
         }
     }
 

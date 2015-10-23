@@ -9,6 +9,11 @@ public class MixedReportConfig implements Config{
 
     private Collection subreportNames;
     private String subreportConfigFilePath;
+    private String reportPosition;
+
+    public static final String MIXEDREPORT = "mixedReport";
+    public static final String HORIZONTAL = "horizontal";
+    public static final String VERTICAL = "vertical";
 
 
     public Collection getSubreportNames() {
@@ -25,5 +30,13 @@ public class MixedReportConfig implements Config{
 
     public void setSubreportConfigFilePath(String subreportConfigFilePath) {
         this.subreportConfigFilePath = subreportConfigFilePath;
+    }
+
+    public String getReportPosition() {
+        return reportPosition;
+    }
+
+    public void setReportPosition(String reportPosition) {
+        this.reportPosition = reportPosition;
     }
 }
