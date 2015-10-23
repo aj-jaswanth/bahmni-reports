@@ -70,21 +70,18 @@ public class MainReportController {
 
             JasperReportBuilder jasperReport = report();
 
-            Map<String, Object> param = new HashMap<String, Object>();
-            if(isMixedReport(report)){
-                param.put("startDate", startDate);
-                param.put("endDate", endDate);
-                param.put("resources", resources);
-                param.put("pageType", pageType);
-            }
-
             jasperReport = new ReportHeader().add(jasperReport, reportName, startDate, endDate);
 
             JasperReportBuilder reportBuilder = reportTemplate.build(connection, jasperReport, report, startDate, endDate, resources,
                     pageType);
 
             if(isMixedReport(report)) {
-                reportBuilder = addJasperSubreports(reportBuilder, report, reportTemplate, param);
+                Map<String, Object> param = new HashMap<String, Object>();
+                param.put("startDate", startDate);
+                param.put("endDate", endDate);
+                param.put("resources", resources);
+                param.put("pageType", pageType);
+                reportBuilder = addJasperSubreports(reportBuilder, report, param);
             }
 
             convertToResponse(responseType, reportBuilder, response, reportName, macroTemplateLocation);
@@ -138,49 +135,54 @@ public class MainReportController {
         return mixedReport;
     }
 
-    private JasperReportBuilder addJasperSubreports(JasperReportBuilder masterJasperReport, Report report, BaseReportTemplate reportTemplate, Map<String, Object> reportParameters) {
+    private JasperReportBuilder addJasperSubreports(JasperReportBuilder masterJasperReport, Report masterReport, Map<String, Object> reportParameters) {
         MultiPageListBuilder builder = cmp.multiPageList();
         builder.setSplitType(SplitType.PREVENT);
 
-        MixedReportConfig mixedReportConfig = ((MixedReportConfig)report.getConfig());
-        Collection<String> subreportNames = mixedReportConfig.getSubreportNames();
-        if (CollectionUtils.isNotEmpty(subreportNames)){
-            for(String subreportName : subreportNames){
-                builder.add(cmp.subreport(buildSubreport(subreportName, reportParameters, null)));
-            }
-        }
+        MixedReportConfig mixedReportConfig = ((MixedReportConfig)masterReport.getConfig());
 
-        String subreportConfigFilePath = mixedReportConfig.getSubreportConfigFilePath();
-        if(StringUtils.isNotBlank(subreportConfigFilePath)){
-            try{
-                ObjectMapper objectMapper = new ObjectMapper();
-                Reports reports = objectMapper.readValue(new File(subreportConfigFilePath), Reports.class);
-                //TODO: better name for subreportConfig
-                for (Report subreportConfig : reports.values()) {
-                    builder.add(cmp.subreport(buildSubreport(subreportConfig.getName(), reportParameters, subreportConfig)));
-                }
-            } catch (IOException e){
-                logger.error("Error adding subreport", e);
-            }
-        }
+        addSubreports(reportParameters, builder, mixedReportConfig);
+        addCustomSubreports(reportParameters, builder, mixedReportConfig);
 
         masterJasperReport.title(builder);
 
         return masterJasperReport;
     }
 
-    private JasperReportBuilder buildSubreport(String subreportName, Map<String, Object> reportParameters, Report configReport) {
+    private void addCustomSubreports(Map<String, Object> reportParameters, MultiPageListBuilder builder, MixedReportConfig mixedReportConfig) {
+        String subreportConfigFilePath = mixedReportConfig.getSubreportConfigFilePath();
+
+        if(StringUtils.isNotBlank(subreportConfigFilePath)){
+            try{
+                ObjectMapper objectMapper = new ObjectMapper();
+                Reports reports = objectMapper.readValue(new File(subreportConfigFilePath), Reports.class);
+                for (Report subreportConfig : reports.values()) {
+                    builder.add(cmp.subreport(buildSubreport(subreportConfig.getName(), reportParameters, subreportConfig.getConfig())));
+                }
+            } catch (IOException e){
+                logger.error("Error adding subreport", e);
+            }
+        }
+    }
+
+    private void addSubreports(Map<String, Object> reportParameters, MultiPageListBuilder builder, MixedReportConfig mixedReportConfig) {
+        Collection<String> subreportNames = mixedReportConfig.getSubreportNames();
+
+        if (CollectionUtils.isNotEmpty(subreportNames)){
+            for(String subreportName : subreportNames){
+                builder.add(cmp.subreport(buildSubreport(subreportName, reportParameters, null)));
+            }
+        }
+    }
+
+    private JasperReportBuilder buildSubreport(String subreportName, Map<String, Object> reportParameters, Config reportConfigTobeMerged) {
         Connection connection = null;
         JasperReportBuilder subreportBuilder = null;
 
         try{
             Report subreport = findReport(subreportName);
 
-            if (subreport.getConfig() != null && configReport != null) {
-                ObjectMapper objectMapper = new ObjectMapper();
-                ObjectReader updater = objectMapper.readerForUpdating(subreport.getConfig());
-                Config merged = updater.readValue(objectMapper.writeValueAsString(configReport.getConfig()));
-            }
+            mergeReportConfig(subreport, reportConfigTobeMerged);
 
             BaseReportTemplate subreportTemplate = subreport.getTemplate(bahmniReportsProperties);
             connection = allDatasources.getConnectionFromDatasource(subreportTemplate);
@@ -200,6 +202,14 @@ public class MainReportController {
         }
 
         return subreportBuilder;
+    }
+
+    private void mergeReportConfig(Report subreport, Config reportConfigTobeMerged) throws IOException {
+        if (subreport.getConfig() != null && reportConfigTobeMerged != null) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            ObjectReader updater = objectMapper.readerForUpdating(subreport.getConfig());
+            Config merged = updater.readValue(objectMapper.writeValueAsString(reportConfigTobeMerged));
+        }
     }
 
     private void convertToResponse(String responseType, JasperReportBuilder reportBuilder, HttpServletResponse response, String fileName, String macroTemplateLocation)
