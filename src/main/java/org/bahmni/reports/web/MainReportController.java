@@ -1,5 +1,6 @@
 package org.bahmni.reports.web;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import net.sf.dynamicreports.jasper.builder.JasperReportBuilder;
@@ -216,6 +217,7 @@ public class MainReportController {
     private void mergeReportConfig(Report subreport, Config reportConfigTobeMerged) throws IOException {
         if (subreport.getConfig() != null && reportConfigTobeMerged != null) {
             ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
             ObjectReader updater = objectMapper.readerForUpdating(subreport.getConfig());
             Config merged = updater.readValue(objectMapper.writeValueAsString(reportConfigTobeMerged));
         }
