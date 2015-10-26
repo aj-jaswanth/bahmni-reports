@@ -149,7 +149,7 @@ public class MainReportController {
 
         if(reportPosition.equals(MixedReportConfig.HORIZONTAL)){
             addReportsToHorizontal(masterJasperReport, subreports);
-        } else if (reportPosition.equals(MixedReportConfig.VERTICAL)) {
+        } else {
             addReportsToVertical(masterJasperReport, subreports);
         }
 
@@ -180,8 +180,8 @@ public class MainReportController {
             try{
                 ObjectMapper objectMapper = new ObjectMapper();
                 Reports reports = objectMapper.readValue(new File(subreportConfigFilePath), Reports.class);
-                for (Report subreportConfig : reports.values()) {
-                    subreports.add(cmp.subreport(buildSubreport(subreportConfig.getName(), reportParameters, subreportConfig.getConfig())));
+                for (Report subreportToBeMerged : reports.values()) {
+                    subreports.add(cmp.subreport(buildSubreport(subreportToBeMerged.getName(), reportParameters, subreportToBeMerged)));
                 }
             } catch (IOException e){
                 logger.error("Error while adding custom subreport", e);
@@ -204,14 +204,19 @@ public class MainReportController {
         return subreports;
     }
 
-    private JasperReportBuilder buildSubreport(String subreportName, Map<String, Object> reportParameters, Config reportConfigTobeMerged) {
+    private JasperReportBuilder buildSubreport(String subreportName, Map<String, Object> reportParameters, Report subreportToBeMerged) {
         Connection connection = null;
         JasperReportBuilder subreportBuilder = null;
 
         try{
             Report subreport = findReport(subreportName);
 
-            mergeReportConfig(subreport, reportConfigTobeMerged);
+            if(subreport == null){
+                subreport = subreportToBeMerged;
+            } else {
+                Config reportConfigTobeMerged = subreportToBeMerged.getConfig();
+                mergeReportConfig(subreport, reportConfigTobeMerged);
+            }
 
             BaseReportTemplate subreportTemplate = subreport.getTemplate(bahmniReportsProperties);
             connection = allDatasources.getConnectionFromDatasource(subreportTemplate);
